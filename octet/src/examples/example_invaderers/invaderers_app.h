@@ -146,12 +146,12 @@ namespace octet {
 
     enum {
       num_sound_sources = 8,
-      num_rows = 5,
-      num_cols = 10,
+      num_rows = 1,
+      num_cols = 5,
       num_missiles = 2,
       num_bombs = 2,
       num_borders = 4,
-      num_invaderers = num_rows * num_cols,
+      num_invaderers = num_cols * num_rows,
 
       // sprite definitions
       ship_sprite = 0,
@@ -217,9 +217,14 @@ namespace octet {
       live_invaderers--;
       score++;
       if (live_invaderers == 4) {
-        invader_velocity *= 4;
-      } else if (live_invaderers == 0) {
+        invader_velocity *= 5;
+	  } else if (live_invaderers == 3) {
+		  invader_velocity *= 2;
+	  } else if (live_invaderers == 1) {
+		  invader_velocity *= 0;
+	  } else if (live_invaderers == 0) {
         game_over = true;
+	 
         sprites[game_over_sprite].translate(-20, 0);
       }
     }
@@ -238,7 +243,7 @@ namespace octet {
 
     // use the keyboard to move the ship
     void move_ship() {
-      const float ship_speed = 0.05f;
+      const float ship_speed = 0.2f;
       // left and right arrows
       if (is_key_down(key_left)) {
         sprites[ship_sprite].translate(-ship_speed, 0);
