@@ -33,6 +33,9 @@ namespace octet {
 
     // true if this sprite is enabled.
     bool enabled;
+ 
+  
+  
   public:
     sprite() {
       texture = 0;
@@ -143,19 +146,22 @@ namespace octet {
 
     // shader to draw a textured triangle
     texture_shader texture_shader_;
+	
+	int life_boss = 50;
 
     enum {
       num_sound_sources = 8,
-      num_rows = 1,
-      num_cols = 5,
+      num_rows = 4,
+      num_cols = 7,
       num_missiles = 2,
       num_bombs = 2,
       num_borders = 4,
       num_invaderers = num_cols * num_rows,
-
-      // sprite definitions
+   	
+	  // sprite definitions
       ship_sprite = 0,
       game_over_sprite,
+	  
 
       first_invaderer_sprite,
       last_invaderer_sprite = first_invaderer_sprite + num_invaderers - 1,
@@ -167,11 +173,17 @@ namespace octet {
       last_bomb_sprite = first_bomb_sprite + num_bombs - 1,
 
       first_border_sprite,
-      last_border_sprite = first_border_sprite + num_borders - 1,
+      last_border_sprite = first_border_sprite + num_borders - 1,	  
 
-      num_sprites,
+	  spinning_boss,
+	  
+  	  broken_boss,
+	
+	num_sprites,
 
     };
+
+	int enemies[num_rows][num_cols]; // places enemies on battlefield
 
     // timers for missiles and bombs
     int missiles_disabled;
@@ -207,8 +219,16 @@ namespace octet {
     bitmap_font font;
 
     ALuint get_sound_source() { return sources[cur_source++ % num_sound_sources]; }
+	
+	void on_hit_spinning_boss() {
+		ALuint source = get_sound_source();
+		alSourcei(source, AL_BUFFER, bang);
+		alSourcePlay(source);
+		score++;
 
-    // called when we hit an enemy
+	}
+  
+	// called when we hit an enemy
     void on_hit_invaderer() {
       ALuint source = get_sound_source();
       alSourcei(source, AL_BUFFER, bang);
@@ -217,17 +237,12 @@ namespace octet {
       live_invaderers--;
       score++;
       if (live_invaderers == 4) {
-        invader_velocity *= 5;
-	  } else if (live_invaderers == 3) {
-		  invader_velocity *= 2;
-	  } else if (live_invaderers == 1) {
-		  invader_velocity *= 0;
+        invader_velocity *= 4;
 	  } else if (live_invaderers == 0) {
-        game_over = true;
-	 
-        sprites[game_over_sprite].translate(-20, 0);
-      }
-    }
+		  sprites[spinning_boss].is_enabled() = true;
+		  sprites[spinning_boss].translate(0, -20.0f);  //puts boss back in battlefield
+	  }
+	}
 
     // called when we are hit
     void on_hit_ship() {
@@ -269,6 +284,7 @@ namespace octet {
 		  }
 	  }
     }
+
 
     // fire button (space)
     void fire_missiles() {
@@ -337,6 +353,25 @@ namespace octet {
               goto next_missile;
             }
           }
+		  //missile hit spinning_boss then - 1 hp
+		 
+		  if (missile.collides_with(sprites[spinning_boss])) {
+			  life_boss--;
+			  score++;
+
+			  if (life_boss == 1){sprites[spinning_boss].is_enabled() = false;}
+					 if (life_boss == 0) {
+				  ;
+				  sprites[broken_boss].is_enabled() = true;
+				  sprites[game_over_sprite].translate(-20, 0);
+				 game_over = true; 
+			  }
+
+		  }
+
+
+
+
           if (missile.collides_with(sprites[first_border_sprite+1])) {
             missile.is_enabled() = false;
             missile.translate(20, 0);
@@ -345,6 +380,7 @@ namespace octet {
       next_missile:;
       }
     }
+
 
     // animate the bombs
     void move_bombs() {
@@ -432,7 +468,62 @@ namespace octet {
 
     // this is called once OpenGL is initialized
     void app_init() {
-      // set up the shader
+     
+		// store the line here
+		char buffer[2048];			//memory to put lines
+		dynarray<string> values;			//memory to store values from csv
+
+
+
+		std::ifstream pipe("blue_pill_red_pill.csv");  //connection to file line by line stream
+
+		if (pipe.bad() == false)			// bad = error in the pipe e.g. file don't exist
+		{
+			int rowCounter = 0;
+			// loop over lines
+			while (!pipe.eof())				//read until end of the file
+			{
+				pipe.getline(buffer, sizeof(buffer));			//read a row
+
+																// loop over columns
+				char *columnPointer;					//Pointer - read colum
+				columnPointer = &(buffer[0]);			// pointing to first char of each cell
+				for (int col = 0; ; col++)				// read how many col in row
+				{
+					char *characterPointer;
+					characterPointer = columnPointer;
+
+					string value;
+					while (*characterPointer != 0 && *characterPointer != ',')
+					{
+						/*const char ch = *characterPointer;
+						const char *c = &ch;
+						value += string(c);*/
+						++characterPointer;
+					}
+
+					const char *c = columnPointer;
+					unsigned int size = characterPointer - columnPointer;
+					value = string(c, size);
+
+					enemies[rowCounter][col] = atoi(value);
+					//values.push_back(value);
+
+					if (*characterPointer == 0) break;
+
+					columnPointer = characterPointer + 1;
+				}
+				rowCounter++;
+			}
+
+
+		}
+
+		
+		
+		
+	
+		// set up the shader
       texture_shader_.init();
 
       // set up the matrices with a camera 5 units from the origin
@@ -445,17 +536,45 @@ namespace octet {
       sprites[ship_sprite].init(ship, 0, -2.75f, 0.25f, 0.25f);
 
       GLuint GameOver = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/GameOver.gif");
-      sprites[game_over_sprite].init(GameOver, 20, 0, 3, 1.5f);
+      sprites[game_over_sprite].init(GameOver, 20, 0, 3, 1.5f); 
 
-      GLuint invaderer = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/invaderer.gif");
-      for (int j = 0; j != num_rows; ++j) {
-        for (int i = 0; i != num_cols; ++i) {
-          assert(first_invaderer_sprite + i + j*num_cols <= last_invaderer_sprite);
-          sprites[first_invaderer_sprite + i + j*num_cols].init(
-            invaderer, ((float)i - num_cols * 0.5f) * 0.5f, 2.50f - ((float)j * 0.5f), 0.25f, 0.25f
-          );
-        }
-      }
+
+	  for (int j = 0; j < num_rows; j++) {
+		  for (int i = 0; i < num_cols; i++) {
+
+			  int mapCSV = enemies[j][i];
+
+			  assert(first_invaderer_sprite + i + j*num_cols <= last_invaderer_sprite);
+
+			  GLuint invaderer;
+			  if (mapCSV == 0)
+			  {
+				  invaderer = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/invaderer_red.gif");
+			  }
+			  else if (mapCSV == 1)
+			  {
+				  invaderer = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/invaderer_blue.gif");
+			  }
+
+			  sprites[first_invaderer_sprite + i + j*num_cols].init(
+				  invaderer, ((float)i - num_cols * 0.5f) * 0.5f, 2.50f - ((float)j * 0.5f), 0.25f, 0.25f
+				  );
+
+		  }
+	  }
+
+
+
+	  //set spinning_boss
+	  GLuint boss = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/spinning_boss.gif"); //get the texture for boss
+	  sprites[spinning_boss].init(boss, 0, 1.5f, 3.0f, 3.0f);											//create boss with location and size
+	  sprites[spinning_boss].is_enabled() = false;																//don't show up at beginning
+	  sprites[spinning_boss].translate(0, 20.0f);																//tell boss to stay at home
+
+	  GLuint broken_boss = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/spinning_boss_broken.gif");
+	  sprites[spinning_boss].init(boss, 0, 1.5f, 3.0f, 3.0f);											//create boss with location and size
+	  sprites[spinning_boss].is_enabled() = false;																//don't show up at beginning
+	  sprites[spinning_boss].translate(0, 20.0f);     
 
       // set the border to white for clarity
       GLuint white = resource_dict::get_texture_handle(GL_RGB, "#ffffff");
@@ -544,8 +663,12 @@ namespace octet {
         sprites[i].render(texture_shader_, cameraToWorld);
       }
 
+	  //draw spinning_boss
+	  if (sprites[spinning_boss].is_enabled())
+		  sprites[spinning_boss].render(texture_shader_, cameraToWorld);
+
       char score_text[32];
-      sprintf(score_text, "score: %d   lives: %d\n", score, num_lives);
+      sprintf(score_text, "hits: %d   lives: %d\n", score, num_lives);
       draw_text(texture_shader_, -1.75f, 2, 1.0f/256, score_text);
 
       // move the listener with the camera
