@@ -240,7 +240,8 @@ namespace octet {
         invader_velocity *= 4;
 	  } else if (live_invaderers == 0) {
 		  sprites[spinning_boss].is_enabled() = true;
-		  sprites[spinning_boss].translate(0, -20.0f);  //puts boss back in battlefield
+		  sprites[spinning_boss].translate(0, -20.0f); 
+		 // sprites[spinning_boss].translate();//puts boss back in battlefield
 	  }
 	}
 
@@ -334,13 +335,16 @@ namespace octet {
       }
     }
 
+
     // animate the missiles
     void move_missiles() {
       const float missile_speed = 0.3f;
       for (int i = 0; i != num_missiles; ++i) {
         sprite &missile = sprites[first_missile_sprite+i];
         if (missile.is_enabled()) {
-          missile.translate(0, missile_speed);
+			if(is_key_down(key_left)){ missile.translate(-0.08f, missile_speed); }
+			else if (is_key_down(key_right)) { missile.translate(0.08f, missile_speed); }
+          else missile.translate(0, missile_speed);
           for (int j = 0; j != num_invaderers; ++j) {
             sprite &invaderer = sprites[first_invaderer_sprite+j];
             if (invaderer.is_enabled() && missile.collides_with(invaderer)) {
@@ -582,6 +586,7 @@ namespace octet {
       sprites[first_border_sprite+1].init(white, 0,  3, 6, 0.2f);
       sprites[first_border_sprite+2].init(white, -3, 0, 0.2f, 6);
       sprites[first_border_sprite+3].init(white, 3,  0, 0.2f, 6);
+
 
       // use the missile texture
       GLuint missile = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/missile.gif");
