@@ -147,7 +147,7 @@ namespace octet {
     // shader to draw a textured triangle
     texture_shader texture_shader_;
 	
-	int life_boss = 50;
+	int life_boss = 10;
 
     enum {
       num_sound_sources = 8,
@@ -178,7 +178,11 @@ namespace octet {
 	  spinning_boss,
 	  
   	  broken_boss,
-	
+	  
+	  star_background,
+
+	  game_done_sprite,
+
 	num_sprites,
 
     };
@@ -199,6 +203,7 @@ namespace octet {
 
     // speed of enemy
     float invader_velocity;
+	float background_velocity;
 
     // sounds
     ALuint whoosh;
@@ -256,6 +261,14 @@ namespace octet {
         sprites[game_over_sprite].translate(-20, 0);
       }
     }
+
+	void move_spinning_boss(float dx, float dy)
+	{
+		if (sprites[spinning_boss].is_enabled()) {
+			sprites[spinning_boss].translate(dx, dy);
+		}
+	}
+
 
     // use the keyboard to move the ship
     void move_ship() {
@@ -360,14 +373,12 @@ namespace octet {
 		  //missile hit spinning_boss then - 1 hp
 		 
 		  if (missile.collides_with(sprites[spinning_boss])) {
+			  missile.is_enabled() = false;
 			  life_boss--;
 			  score++;
-
-			  if (life_boss == 1){sprites[spinning_boss].is_enabled() = false;}
-					 if (life_boss == 0) {
+				if (life_boss == 0) {
 				  ;
-				  sprites[broken_boss].is_enabled() = true;
-				  sprites[game_over_sprite].translate(-20, 0);
+				  sprites[game_done_sprite].translate(-20, 0);
 				 game_over = true; 
 			  }
 
@@ -519,13 +530,7 @@ namespace octet {
 				}
 				rowCounter++;
 			}
-
-
 		}
-
-		
-		
-		
 	
 		// set up the shader
       texture_shader_.init();
@@ -542,6 +547,8 @@ namespace octet {
       GLuint GameOver = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/GameOver.gif");
       sprites[game_over_sprite].init(GameOver, 20, 0, 3, 1.5f); 
 
+	  GLuint GameDone = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/GameDone.gif");
+	  sprites[game_done_sprite].init(GameDone, 20, 0, 3, 1.5f);
 
 	  for (int j = 0; j < num_rows; j++) {
 		  for (int i = 0; i < num_cols; i++) {
@@ -577,7 +584,7 @@ namespace octet {
 
 	  GLuint broken_boss = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/spinning_boss_broken.gif");
 	  sprites[spinning_boss].init(boss, 0, 1.5f, 3.0f, 3.0f);											//create boss with location and size
-	  sprites[spinning_boss].is_enabled() = false;																//don't show up at beginning
+	  sprites[spinning_boss].is_enabled() = true;																//don't show up at beginning
 	  sprites[spinning_boss].translate(0, 20.0f);     
 
       // set the border to white for clarity
@@ -587,6 +594,7 @@ namespace octet {
       sprites[first_border_sprite+2].init(white, -3, 0, 0.2f, 6);
       sprites[first_border_sprite+3].init(white, 3,  0, 0.2f, 6);
 
+	  
 
       // use the missile texture
       GLuint missile = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/missile.gif");
@@ -603,8 +611,14 @@ namespace octet {
         sprites[first_bomb_sprite+i].init(bomb, 20, 0, 0.0625f, 0.25f);
         sprites[first_bomb_sprite+i].is_enabled() = false;
       }
-
-      // sounds
+	  
+	  
+	  GLuint background = resource_dict::get_texture_handle(GL_RGBA, "assets/invaderers/spinning_boss_broken.gif");
+	  sprites[star_background].init(background, -2.5, 1.5f, 3.0f, 3.0f);
+	  sprites[star_background].is_enabled() = false;
+      
+	  
+	  // sounds
       whoosh = resource_dict::get_sound_handle(AL_FORMAT_MONO16, "assets/invaderers/whoosh.wav");
       bang = resource_dict::get_sound_handle(AL_FORMAT_MONO16, "assets/invaderers/bang.wav");
       cur_source = 0;

@@ -39,8 +39,8 @@ namespace octet { namespace shaders {
       const char fragment_shader[] = SHADER_STR(
         varying vec2 uv_;
         uniform sampler2D sampler;
-
-		void main() { gl_FragColor = vec4(uv_.x, uv_.y, 0, 1)*texture2D(sampler, uv_); }
+		void main() { gl_FragColor = texture2D(sampler, uv_) * vec4(1, 1, 50, 0.5); }
+//		void main() { gl_FragColor = vec4(uv_.x, uv_.y, 5, 1)*texture2D(sampler, uv_); }
 
 		);
     
